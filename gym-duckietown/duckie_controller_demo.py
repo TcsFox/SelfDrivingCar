@@ -15,6 +15,7 @@ import gym
 import gym_duckietown
 from gym_duckietown.envs import DuckietownEnv
 from gym_duckietown.wrappers import UndistortWrapper
+from PIL import Image
 import threading
 
 sys.path.append('../Car Interface Weeks 2-3')
@@ -28,6 +29,7 @@ class Car():
         self.pedal_type = None
         self.amount = 0.0
         self.TIME_UNIT = self.interface.dt
+        self.image_num = 0
 
 
     def start(self):
@@ -97,8 +99,19 @@ env = DuckietownEnv(
     frame_skip = args.frame_skip,
     distortion = args.distortion,
 )
+env2 = DuckietownEnv(
+    seed = args.seed,
+    map_name = args.map_name,
+    draw_curve = args.draw_curve,
+    draw_bbox = args.draw_bbox,
+    domain_rand = args.domain_rand,
+    frame_skip = args.frame_skip,
+    distortion = args.distortion,
+    do_color_relabeling = True,
+)
 
 env.reset()
+env2.reset()
 env.render()
 
 @env.unwrapped.window.event
@@ -111,11 +124,13 @@ def on_key_press(symbol, modifiers):
     if symbol == key.BACKSPACE or symbol == key.SLASH:
         print('RESET')
         env.reset()
+        env2.reset()
         env.render()
     elif symbol == key.PAGEUP:
         env.unwrapped.cam_angle[0] = 0
     elif symbol == key.ESCAPE:
         env.close()
+        env2.close()
         sys.exit(0)
 
     # Take a screenshot
@@ -127,6 +142,7 @@ def on_key_press(symbol, modifiers):
 
 # Register a keyboard handler
 key_handler = key.KeyStateHandler()
+
 env.unwrapped.window.push_handlers(key_handler)
 
 def update(dt):
@@ -161,18 +177,27 @@ def update(dt):
         action *= 1.5
 
     obs, reward, done, info = env.step(action)
+    obs2, reward2, done2, info2 = env2.step(action)
+    im = Image.fromarray(obs)
+    im2 = Image.fromarray(obs2)
+    im.save("imgs/" + str(car.image_num) + "-obs.png")
+    im2.save("imgs/" + str(car.image_num) + "-obs2.png")
+    car.image_num += 1
+    #f = open("test.txt", "a")
+    #f.write(str((obs, obs2)) + "\n")
+    #f.close()
+    
     #print('step_count = %s, reward=%.3f' % (env.unwrapped.step_count, reward))
 
     
     if key_handler[key.RETURN]:
-        from PIL import Image
         im = Image.fromarray(obs)
-
         im.save('screen.png')
 
     if done:
         print('done!')
         env.reset()
+        env2.reset()
         car.reset()
         env.render()
 
